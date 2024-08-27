@@ -1,57 +1,33 @@
-from scapy.all import rdpcap, ICMP, IP
+from scapy.all import rdpcap, ICMP
 from termcolor import colored
 
-# Función para descifrar el mensaje utilizando un cifrado César
-def descifrar_cesar(texto, desplazamiento):
-    resultado = ""
-    for caracter in texto:
-        if caracter.isalpha():
-            base = ord('a') if caracter.islower() else ord('A')
-            resultado += chr((ord(caracter) - base + desplazamiento) % 26 + base)
-        else:
-            resultado += caracter
-    return resultado
+# Función para decodificar el payload de ICMP con un desplazamiento dado
+def decode_message(payload, shift):
+    decoded = ''.join(chr((byte + shift) % 256) for byte in payload)
+    return decoded
 
-# Función para analizar la captura y extraer los mensajes ICMP reply específicos
-def extraer_icmp_reply(captura):
-    mensajes = []
-    paquetes = rdpcap(captura)
-    for paquete in paquetes:
-        if ICMP in paquete and paquete[ICMP].type == 0:  # ICMP type 0 es reply
-            if paquete[IP].src == '192.168.1.1' and paquete[IP].dst == '10.0.2.15':
-                icmp_carga = bytes(paquete[ICMP].payload)
-                try:
-                    mensaje = icmp_carga.decode('utf-8')
-                    mensajes.append(mensaje)
-                except UnicodeDecodeError:
-                    continue
-    return mensajes
+# Función para determinar si una cadena es probable que sea texto en claro
+def is_likely_plaintext(text):
+    # Esto es una simplificación, se puede mejorar con análisis más sofisticado.
+    common_words = ['the', 'and', 'is', 'in', 'to', 'it', 'of', 'you', 'that', 'a', 'i']
+    return any(word in text.lower() for word in common_words)
 
-# Función para determinar si un texto es en claro
-def es_mensaje_claro(texto):
-    palabras_comunes = ['the', 'and', 'el', 'la', 'es', 'en']
-    for palabra in palabras_comunes:
-        if palabra in texto.lower():
-            return True
-    return False
+# Leer el archivo .pcap
+packets = rdpcap('captura.pcap')
 
-# Función principal para ejecutar el análisis
-def analizar_captura(captura):
-    mensajes = extraer_icmp_reply(captura)
-    for mensaje in mensajes:
-        print(f"Mensaje encontrado: {mensaje}")
-        opciones_descifradas = []
-        for desplazamiento in range(26):
-            descifrado = descifrar_cesar(mensaje, desplazamiento)
-            opciones_descifradas.append(descifrado)
-            if es_mensaje_claro(descifrado):
-                print(colored(f"Posible mensaje en claro (desplazamiento {desplazamiento}): {descifrado}", 'green'))
-            else:
-                print(f"Desplazamiento {desplazamiento}: {descifrado}")
-        print("\n")
+# Extraer los payloads de los paquetes ICMP
+icmp_payloads = []
+for packet in packets:
+    if ICMP in packet and packet[ICMP].type == 8:  # ICMP Echo Request
+        icmp_payloads.append(bytes(packet[ICMP].payload))
 
-# Ruta del archivo de captura
-captura = "/home/robin/Escritorio/lab1cripto.pcapng"  # Actualiza con la ruta correcta
+# Unir todos los payloads en una sola secuencia
+message = b''.join(icmp_payloads)
 
-# Ejecutar el análisis
-analizar_captura(captura)
+# Probar todos los desplazamientos posibles (0-255)
+for shift in range(256):
+    decoded_message = decode_message(message, shift)
+    if is_likely_plaintext(decoded_message):
+        print(colored(f'Decoded with shift {shift}: {decoded_message}', 'green'))
+    else:
+        print(f'Decoded with shift {shift}: {decoded_message}')
