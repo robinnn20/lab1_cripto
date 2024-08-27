@@ -1,8 +1,12 @@
 import sys
 from scapy.all import rdpcap, ICMP, IP
 from termcolor import colored
+import re
+import nltk
 
-TARGET_PHRASE = "criptografia y seguridad en redes"
+# Descarga del corpus de palabras en español
+nltk.download('words')
+words = set(nltk.corpus.words.words())
 
 # Función para decodificar el mensaje
 def decode_message(data, shift):
@@ -14,6 +18,12 @@ def decode_message(data, shift):
         else:
             decoded.append(char)
     return ''.join(decoded)
+
+# Función para evaluar cuántas palabras reales contiene el mensaje decodificado
+def count_real_words(decoded_message):
+    words_in_message = re.findall(r'\b\w+\b', decoded_message)
+    real_word_count = sum(1 for word in words_in_message if word.lower() in words)
+    return real_word_count
 
 # Función para extraer el mensaje de los paquetes ICMP que coinciden con los criterios
 def extract_message_from_icmp(pcap_file):
@@ -27,26 +37,23 @@ def extract_message_from_icmp(pcap_file):
                 ascii_data = raw_data.decode('ascii', errors='ignore')
                 messages.append(ascii_data)
 
-    return ' '.join(messages)
+    return messages
 
 # Función para imprimir todas las combinaciones posibles
 def print_possible_messages(message):
-    best_shift = 0
-    highest_similarity = 0
+    probable_message = ""
+    max_real_words = 0
+
     for shift in range(26):
         decoded_message = decode_message(message, shift)
-        similarity = sum(1 for a, b in zip(decoded_message, TARGET_PHRASE) if a == b)
-        print(f"Shift {shift:2}: {decoded_message}")
-        if similarity > highest_similarity:
-            highest_similarity = similarity
-            best_shift = shift
+        real_word_count = count_real_words(decoded_message)
+        print(f"Shift {shift:2}: {decoded_message} (Real words: {real_word_count})")
+        
+        if real_word_count > max_real_words:
+            max_real_words = real_word_count
+            probable_message = decoded_message
 
-    return best_shift
-
-# Función para destacar el mensaje más probable
-def highlight_most_probable_message(message, best_shift):
-    probable_message = decode_message(message, best_shift)
-    print(colored(f"\nMost probable message (Shift {best_shift}): {probable_message}", 'green'))
+    return probable_message
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -57,5 +64,6 @@ if __name__ == "__main__":
     message = extract_message_from_icmp(pcap_file)
     print(f"\nOriginal Message: {message}")
     print("\nAll possible messages:")
-    best_shift = print_possible_messages(message)
-    highlight_most_probable_message(message, best_shift)
+    probable_message = print_possible_messages(message)
+
+    print(colored(f"\nMost probable message: {probable_message}", 'green'))
