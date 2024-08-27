@@ -12,7 +12,6 @@ def decode_message(data, shift):
 
 def calculate_similarity(decoded_message):
     # Calcula una medida simple de similitud con el mensaje objetivo
-    # Contar coincidencias de caracteres en las posiciones correspondientes
     target_len = len(TARGET_MESSAGE)
     similarity_score = 0
     for i in range(min(target_len, len(decoded_message))):
@@ -27,8 +26,19 @@ def main(pcap_file):
     # Filtrar solo los paquetes ICMP
     icmp_packets = [pkt for pkt in packets if scapy.ICMP in pkt]
     
-    # Extraer los datos de los paquetes ICMP
-    icmp_data = b''.join(bytes(pkt[scapy.Raw].load) for pkt in icmp_packets if scapy.Raw in pkt)
+    # Extraer la carga útil de los paquetes ICMP
+    icmp_data = b''
+    for pkt in icmp_packets:
+        if scapy.Raw in pkt:
+            icmp_data += bytes(pkt[scapy.Raw].load)
+        elif scapy.ICMP in pkt and pkt[scapy.ICMP].type == 0:  # Tipo 0 es respuesta ICMP (Echo Reply)
+            # Extraer el mensaje en caso de que esté en el campo de datos
+            payload = pkt[scapy.ICMP].payload
+            icmp_data += bytes(payload)  # Agregar la carga útil a los datos
+
+    if not icmp_data:
+        print("No se encontraron datos ICMP válidos.")
+        return
     
     best_message = None
     best_score = -1
