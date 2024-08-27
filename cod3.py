@@ -1,3 +1,4 @@
+import sys
 from scapy.all import rdpcap, ICMP
 from termcolor import colored
 
@@ -8,26 +9,36 @@ def decode_message(payload, shift):
 
 # Función para determinar si una cadena es probable que sea texto en claro
 def is_likely_plaintext(text):
-    # Esto es una simplificación, se puede mejorar con análisis más sofisticado.
     common_words = ['the', 'and', 'is', 'in', 'to', 'it', 'of', 'you', 'that', 'a', 'i']
     return any(word in text.lower() for word in common_words)
 
-# Leer el archivo .pcap
-packets = rdpcap('captura.pcap')
+def main():
+    # Verificar si se proporcionó el archivo .pcap
+    if len(sys.argv) != 2:
+        print("Uso: python3 decode_icmp.py archivo.pcap")
+        sys.exit(1)
 
-# Extraer los payloads de los paquetes ICMP
-icmp_payloads = []
-for packet in packets:
-    if ICMP in packet and packet[ICMP].type == 8:  # ICMP Echo Request
-        icmp_payloads.append(bytes(packet[ICMP].payload))
+    pcap_file = sys.argv[1]
 
-# Unir todos los payloads en una sola secuencia
-message = b''.join(icmp_payloads)
+    # Leer el archivo .pcap
+    packets = rdpcap(pcap_file)
 
-# Probar todos los desplazamientos posibles (0-255)
-for shift in range(256):
-    decoded_message = decode_message(message, shift)
-    if is_likely_plaintext(decoded_message):
-        print(colored(f'Decoded with shift {shift}: {decoded_message}', 'green'))
-    else:
-        print(f'Decoded with shift {shift}: {decoded_message}')
+    # Extraer los payloads de los paquetes ICMP
+    icmp_payloads = []
+    for packet in packets:
+        if ICMP in packet and packet[ICMP].type == 8:  # ICMP Echo Request
+            icmp_payloads.append(bytes(packet[ICMP].payload))
+
+    # Unir todos los payloads en una sola secuencia
+    message = b''.join(icmp_payloads)
+
+    # Probar todos los desplazamientos posibles (0-255)
+    for shift in range(256):
+        decoded_message = decode_message(message, shift)
+        if is_likely_plaintext(decoded_message):
+            print(colored(f'Decoded with shift {shift}: {decoded_message}', 'green'))
+        else:
+            print(f'Decoded with shift {shift}: {decoded_message}')
+
+if __name__ == "__main__":
+    main()
