@@ -3,8 +3,9 @@ from scapy.all import rdpcap, ICMP
 from termcolor import colored
 
 # Función para decodificar el payload de ICMP con un desplazamiento dado
-def decode_message(payload, shift):
-    decoded = ''.join(chr((byte + shift) % 256) for byte in payload)
+def decode_message(payloads, shift):
+    # Decodificar cada payload como una letra usando el desplazamiento dado
+    decoded = ''.join(chr((payload[0] + shift) % 256) for payload in payloads)
     return decoded
 
 # Función para determinar si una cadena es probable que sea texto en claro
@@ -23,19 +24,16 @@ def main():
     # Leer el archivo .pcapng
     packets = rdpcap(pcap_file)
 
-    # Extraer los payloads de los paquetes ICMP de respuesta con origen y destino específicos
+    # Extraer el primer byte del payload de los paquetes ICMP de respuesta
     icmp_payloads = []
     for packet in packets:
         if (ICMP in packet and packet[ICMP].type == 0 and  # ICMP Echo Reply
             packet.src == '192.168.1.1' and packet.dst == '10.0.2.15'):
-            icmp_payloads.append(bytes(packet[ICMP].payload))
-
-    # Unir todos los payloads en una sola secuencia
-    message = b''.join(icmp_payloads)
+            icmp_payloads.append(packet[ICMP].load)
 
     # Probar todos los desplazamientos posibles (0-255)
     for shift in range(256):
-        decoded_message = decode_message(message, shift)
+        decoded_message = decode_message(icmp_payloads, shift)
         if is_likely_plaintext(decoded_message):
             print(colored(f'Decoded with shift {shift}: {decoded_message}', 'green'))
         else:
