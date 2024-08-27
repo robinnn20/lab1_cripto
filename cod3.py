@@ -1,5 +1,6 @@
 import sys
 from scapy.all import rdpcap, ICMP
+
 from termcolor import colored
 
 # Función para decodificar el payload de ICMP con un desplazamiento dado
@@ -23,10 +24,11 @@ def main():
     # Leer el archivo .pcap
     packets = rdpcap(pcap_file)
 
-    # Extraer los payloads de los paquetes ICMP
+    # Extraer los payloads de los paquetes ICMP con origen y destino específicos
     icmp_payloads = []
     for packet in packets:
-        if ICMP in packet and packet[ICMP].type == 8:  # ICMP Echo Request
+        if (ICMP in packet and packet[ICMP].type == 8 and
+            packet.src == '10.0.2.15' and packet.dst == '192.168.1.1'):  # ICMP Echo Request
             icmp_payloads.append(bytes(packet[ICMP].payload))
 
     # Unir todos los payloads en una sola secuencia
