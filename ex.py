@@ -25,29 +25,21 @@ def extract_message_from_icmp(pcap_file):
                 ascii_data = raw_data.decode('ascii', errors='ignore')
                 messages.append(ascii_data)
 
-    return ' '.join(messages)
+    return ''.join(messages)
 
-# Función para imprimir todas las combinaciones posibles
+# Función para determinar si una cadena es texto claro
+def is_plaintext(message):
+    alpha_count = sum(1 for c in message if c.isalpha())
+    return alpha_count / len(message) > 0.7  # Umbral del 70% de letras alfabéticas
+
+# Función para imprimir todas las combinaciones posibles y resaltar las legibles
 def print_possible_messages(message):
     for shift in range(26):
         decoded_message = decode_message(message, shift)
-        print(f"Shift {shift:2}: {decoded_message}")
-
-# Función para determinar si una cadena es de texto claro
-def is_probable_plaintext(decoded_message):
-    # Puedes ajustar el criterio según lo que consideres como texto claro.
-    # Por ejemplo, aquí consideramos texto claro si tiene más del 70% de letras (y no solo símbolos).
-    letter_count = sum(c.isalpha() for c in decoded_message)
-    return letter_count / len(decoded_message) > 0.7
-
-# Función para destacar el mensaje más probable y colorear el texto claro
-def highlight_most_probable_message(message):
-    for shift in range(26):
-        decoded_message = decode_message(message, shift)
-        if is_probable_plaintext(decoded_message):
-            print(colored(f"\nProbable plaintext message (Shift {shift}): {decoded_message}", 'green'))
-            return
-    print("\nNo probable plaintext message found.")
+        if is_plaintext(decoded_message):
+            print(colored(f"Shift {shift:2}: {decoded_message}", 'green'))
+        else:
+            print(f"Shift {shift:2}: {decoded_message}")
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -59,4 +51,3 @@ if __name__ == "__main__":
     print(f"\nOriginal Message: {message}")
     print("\nAll possible messages:")
     print_possible_messages(message)
-    highlight_most_probable_message(message)
