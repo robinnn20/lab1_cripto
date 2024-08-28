@@ -1,10 +1,7 @@
 import sys
 from scapy.all import rdpcap, ICMP, IP
 from termcolor import colored
-import language_tool_python
-
-# Inicializar el verificador de gramática
-tool = language_tool_python.LanguageTool('es')
+import re
 
 # Función para decodificar el mensaje
 def decode_message(data, shift):
@@ -33,10 +30,19 @@ def extract_message_from_icmp(pcap_file):
 
 # Función para evaluar el texto y determinar su claridad
 def evaluar_texto(texto):
-    longitud = len(texto.split())
-    errores = tool.check(texto)
-    correcciones = len(errores)
-    puntuacion = longitud - correcciones
+    # Considerar un conjunto básico de palabras comunes
+    palabras_comunes = {"el", "la", "y", "de", "que", "en", "a", "los", "se", "del", "las", "un", "por", "con", "no", "una", "su", "para", "es", "al"}
+    
+    palabras = re.findall(r'\w+', texto.lower())
+    total_palabras = len(palabras)
+    palabras_comunes_contadas = sum(1 for palabra in palabras if palabra in palabras_comunes)
+
+    # Evitar división por cero
+    if total_palabras == 0:
+        return 0
+    
+    # Proporción de palabras comunes
+    puntuacion = palabras_comunes_contadas / total_palabras
     return puntuacion
 
 # Función para imprimir todas las combinaciones posibles
@@ -59,7 +65,10 @@ def highlight_most_probable_message(messages):
                 mejor_puntuacion = puntuacion
                 mejor_mensaje = decoded_message
 
-    print(colored(f"\nMost probable message: {mejor_mensaje}", 'green'))
+    if mejor_mensaje:
+        print(colored(f"\nMost probable message: {mejor_mensaje}", 'green'))
+    else:
+        print(colored("\nNo clear message found.", 'red'))
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
