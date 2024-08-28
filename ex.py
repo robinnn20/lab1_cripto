@@ -3,9 +3,6 @@ from scapy.all import rdpcap, ICMP, IP
 from termcolor import colored
 import language_tool_python
 
-# Definir un conjunto simple de palabras comunes para evaluar la legibilidad
-COMMON_WORDS = {"the", "and", "is", "in", "of", "to", "a", "it", "with", "for", "on", "as", "at", "this", "that", "which", "or", "an"}
-
 # Inicializar el verificador de gramática
 tool = language_tool_python.LanguageTool('es')
 
@@ -29,21 +26,12 @@ def extract_message_from_icmp(pcap_file):
         if packet.haslayer(ICMP):
             if packet[IP].src == "192.168.1.1" and packet[IP].dst == "10.0.2.15" and packet[ICMP].type == 0:  # Echo Reply
                 raw_data = bytes(packet[ICMP].payload)
-                ascii_data = raw_data.decode('ascii', errors='ignore').strip()  # Eliminar espacios en blanco
+                ascii_data = raw_data.decode('ascii', errors='ignore')
                 messages.append(ascii_data)
 
-    return ' '.join(messages)
+    return messages
 
-# Función para verificar si el mensaje tiene un alto porcentaje de palabras comunes
-def is_plaintext(message):
-    words_in_message = message.lower().split()  # Separar en palabras por espacios
-    if not words_in_message:  # Manejar caso de cadena vacía
-        return False
-    
-    common_word_count = sum(1 for word in words_in_message if word in COMMON_WORDS)
-    return common_word_count / len(words_in_message) > 0.3  # Umbral del 30%
-
-# Función para evaluar el texto y calcular una puntuación
+# Función para evaluar el texto y determinar su claridad
 def evaluar_texto(texto):
     longitud = len(texto.split())
     errores = tool.check(texto)
@@ -51,27 +39,27 @@ def evaluar_texto(texto):
     puntuacion = longitud - correcciones
     return puntuacion
 
-# Función para encontrar el mensaje más claro
-def encontrar_mensaje_claro(mensajes):
-    puntuaciones = {mensaje: evaluar_texto(mensaje) for mensaje in mensajes}
-    mensaje_claro = max(puntuaciones, key=puntuaciones.get)
-    return mensaje_claro, puntuaciones[mensaje_claro]
-
-# Función para imprimir todas las combinaciones posibles y resaltar las legibles
+# Función para imprimir todas las combinaciones posibles
 def print_possible_messages(message):
-    mensajes_decodificados = []
     for shift in range(26):
         decoded_message = decode_message(message, shift)
-        mensajes_decodificados.append(decoded_message)
+        print(f"Shift {shift:2}: {decoded_message}")
 
-    # Encontrar el mensaje más claro entre los decodificados
-    mensaje_claro, puntuacion = encontrar_mensaje_claro(mensajes_decodificados)
+# Función para determinar y resaltar el mensaje más probable
+def highlight_most_probable_message(messages):
+    mejor_mensaje = ""
+    mejor_puntuacion = float('-inf')
 
-    for shift, decoded_message in enumerate(mensajes_decodificados):
-        if decoded_message == mensaje_claro:
-            print(colored(f"Shift {shift:2}: {decoded_message}", 'green'))
-        else:
-            print(f"Shift {shift:2}: {decoded_message}")
+    for message in messages:
+        for shift in range(26):
+            decoded_message = decode_message(message, shift)
+            puntuacion = evaluar_texto(decoded_message)
+
+            if puntuacion > mejor_puntuacion:
+                mejor_puntuacion = puntuacion
+                mejor_mensaje = decoded_message
+
+    print(colored(f"\nMost probable message: {mejor_mensaje}", 'green'))
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -79,7 +67,14 @@ if __name__ == "__main__":
         sys.exit(1)
 
     pcap_file = sys.argv[1]
-    message = extract_message_from_icmp(pcap_file)
-    print(f"\nOriginal Message: {message}")
+    messages = extract_message_from_icmp(pcap_file)
+
+    print("\nExtracted Messages:")
+    for msg in messages:
+        print(f"- {msg}")
+
     print("\nAll possible messages:")
-    print_possible_messages(message)
+    for msg in messages:
+        print_possible_messages(msg)
+
+    highlight_most_probable_message(messages)
