@@ -1,9 +1,13 @@
 import sys
 from scapy.all import rdpcap, ICMP, IP
 from termcolor import colored
+import language_tool_python
 
 # Definir un conjunto simple de palabras comunes para evaluar la legibilidad
 COMMON_WORDS = {"the", "and", "is", "in", "of", "to", "a", "it", "with", "for", "on", "as", "at", "this", "that", "which", "or", "an"}
+
+# Inicializar el verificador de gramática
+tool = language_tool_python.LanguageTool('es')
 
 # Función para decodificar el mensaje
 def decode_message(data, shift):
@@ -25,7 +29,7 @@ def extract_message_from_icmp(pcap_file):
         if packet.haslayer(ICMP):
             if packet[IP].src == "192.168.1.1" and packet[IP].dst == "10.0.2.15" and packet[ICMP].type == 0:  # Echo Reply
                 raw_data = bytes(packet[ICMP].payload)
-                ascii_data = raw_data.decode('ascii', errors='ignore')
+                ascii_data = raw_data.decode('ascii', errors='ignore').strip()  # Eliminar espacios en blanco
                 messages.append(ascii_data)
 
     return ' '.join(messages)
@@ -39,11 +43,32 @@ def is_plaintext(message):
     common_word_count = sum(1 for word in words_in_message if word in COMMON_WORDS)
     return common_word_count / len(words_in_message) > 0.3  # Umbral del 30%
 
+# Función para evaluar el texto y calcular una puntuación
+def evaluar_texto(texto):
+    longitud = len(texto.split())
+    errores = tool.check(texto)
+    correcciones = len(errores)
+    puntuacion = longitud - correcciones
+    return puntuacion
+
+# Función para encontrar el mensaje más claro
+def encontrar_mensaje_claro(mensajes):
+    puntuaciones = {mensaje: evaluar_texto(mensaje) for mensaje in mensajes}
+    mensaje_claro = max(puntuaciones, key=puntuaciones.get)
+    return mensaje_claro, puntuaciones[mensaje_claro]
+
 # Función para imprimir todas las combinaciones posibles y resaltar las legibles
 def print_possible_messages(message):
+    mensajes_decodificados = []
     for shift in range(26):
         decoded_message = decode_message(message, shift)
-        if is_plaintext(decoded_message):
+        mensajes_decodificados.append(decoded_message)
+
+    # Encontrar el mensaje más claro entre los decodificados
+    mensaje_claro, puntuacion = encontrar_mensaje_claro(mensajes_decodificados)
+
+    for shift, decoded_message in enumerate(mensajes_decodificados):
+        if decoded_message == mensaje_claro:
             print(colored(f"Shift {shift:2}: {decoded_message}", 'green'))
         else:
             print(f"Shift {shift:2}: {decoded_message}")
