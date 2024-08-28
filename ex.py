@@ -32,9 +32,12 @@ def extract_message_from_icmp(pcap_file):
 
 # Función para verificar si el mensaje tiene un alto porcentaje de palabras comunes
 def is_plaintext(message):
-    words_in_message = set(message.lower().split())
-    common_word_count = len(words_in_message & COMMON_WORDS)
-    return common_word_count / len(words_in_message) > 0.3 if words_in_message else False  # Umbral del 30%
+    words_in_message = message.lower().split()  # Separar en palabras por espacios
+    if not words_in_message:  # Manejar caso de cadena vacía
+        return False
+    
+    common_word_count = sum(1 for word in words_in_message if word in COMMON_WORDS)
+    return common_word_count / len(words_in_message) > 0.3  # Umbral del 30%
 
 # Función para imprimir todas las combinaciones posibles y resaltar las legibles
 def print_possible_messages(message):
