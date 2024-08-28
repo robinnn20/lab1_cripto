@@ -27,17 +27,20 @@ def extract_message_from_icmp(pcap_file):
 
     return ' '.join(messages)
 
-# Función para imprimir todas las combinaciones posibles
+# Función para determinar si una cadena es texto claro
+def is_plaintext(message):
+    alpha_count = sum(1 for c in message if c.isalpha())
+    relevant_count = sum(1 for c in message if c.isalpha() or c.isspace() or c in '.,;:!?')
+    return alpha_count / relevant_count > 0.7  # Umbral del 70% de letras alfabéticas
+
+# Función para imprimir todas las combinaciones posibles y resaltar las legibles
 def print_possible_messages(message):
     for shift in range(26):
         decoded_message = decode_message(message, shift)
-        print(f"Shift {shift:2}: {decoded_message}")
-
-# Función para determinar el mensaje más probable (puedes ajustar el criterio)
-def highlight_most_probable_message(message):
-    probable_shift = max(range(26), key=lambda shift: message.count(decode_message(message, shift)))
-    probable_message = decode_message(message, probable_shift)
-    print(colored(f"\nMost probable message (Shift {probable_shift}): {probable_message}", 'green'))
+        if is_plaintext(decoded_message):
+            print(colored(f"Shift {shift:2}: {decoded_message}", 'green'))
+        else:
+            print(f"Shift {shift:2}: {decoded_message}")
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -49,4 +52,3 @@ if __name__ == "__main__":
     print(f"\nOriginal Message: {message}")
     print("\nAll possible messages:")
     print_possible_messages(message)
-    highlight_most_probable_message(message)
