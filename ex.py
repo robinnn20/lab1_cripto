@@ -2,6 +2,9 @@ import sys
 from scapy.all import rdpcap, ICMP, IP
 from termcolor import colored
 
+# Definir un conjunto simple de palabras comunes para evaluar la legibilidad
+COMMON_WORDS = {"the", "and", "is", "in", "of", "to", "a", "it", "with", "for", "on", "as", "at", "this", "that", "which", "or", "an"}
+
 # Función para decodificar el mensaje
 def decode_message(data, shift):
     decoded = []
@@ -27,11 +30,11 @@ def extract_message_from_icmp(pcap_file):
 
     return ' '.join(messages)
 
-# Función para determinar si una cadena es texto claro
+# Función para verificar si el mensaje tiene un alto porcentaje de palabras comunes
 def is_plaintext(message):
-    alpha_count = sum(1 for c in message if c.isalpha())
-    relevant_count = sum(1 for c in message if c.isalpha() or c.isspace() or c in '.,;:!?')
-    return alpha_count / relevant_count > 0.7  # Umbral del 70% de letras alfabéticas
+    words_in_message = set(message.lower().split())
+    common_word_count = len(words_in_message & COMMON_WORDS)
+    return common_word_count / len(words_in_message) > 0.3 if words_in_message else False  # Umbral del 30%
 
 # Función para imprimir todas las combinaciones posibles y resaltar las legibles
 def print_possible_messages(message):
