@@ -33,38 +33,32 @@ def is_plaintext(message):
     relevant_count = sum(1 for c in message if c.isalpha() or c.isspace() or c in '.,;:!?')
     return alpha_count / relevant_count > 0.7  # Umbral del 70% de letras alfabéticas
 
-# Función para evaluar la calidad de un texto
+# Función para evaluar el texto y devolver la puntuación
 def evaluar_texto(texto):
-    longitud = len(texto.split())
-    errores = sum(1 for c in texto if not c.isalpha() and not c.isspace() and c not in '.,;:!?')
-    puntuacion = longitud - errores
+    alpha_count = sum(1 for c in texto if c.isalpha())
+    relevant_count = sum(1 for c in texto if c.isalpha() or c.isspace() or c in '.,;:!?')
+    puntuacion = alpha_count / relevant_count if relevant_count > 0 else 0
     return puntuacion
 
-# Función para encontrar el mensaje más claro
-def encontrar_mensaje_claro(messages):
-    mejor_mensaje = None
-    mejor_puntuacion = float('-inf')
-
-    for message in messages:
-        puntuacion = evaluar_texto(message)
-        if puntuacion > mejor_puntuacion:
-            mejor_puntuacion = puntuacion
-            mejor_mensaje = message
-
-    return mejor_mensaje, mejor_puntuacion
-
-# Función para imprimir todas las combinaciones posibles y resaltar la más clara
+# Función para imprimir todas las combinaciones posibles y resaltar la más probable a ser texto claro
 def print_possible_messages(message):
-    mensajes_decodificados = []
+    mejores_mensajes = []
+    mejor_puntuacion = 0
+
     for shift in range(26):
         decoded_message = decode_message(message, shift)
-        mensajes_decodificados.append(decoded_message)
+        puntuacion = evaluar_texto(decoded_message)
+        if puntuacion > mejor_puntuacion:
+            mejor_puntuacion = puntuacion
+            mejores_mensajes = [(shift, decoded_message)]
+        elif puntuacion == mejor_puntuacion:
+            mejores_mensajes.append((shift, decoded_message))
 
-    mejor_mensaje, puntuacion = encontrar_mensaje_claro(mensajes_decodificados)
-    if mejor_mensaje:
-        print(colored(f"El mensaje más claro es: {mejor_mensaje} con una puntuación de {puntuacion}.", 'green'))
-    else:
-        print("No se encontró un mensaje claro.")
+    for shift, msg in mejores_mensajes:
+        if is_plaintext(msg):
+            print(colored(f"Shift {shift:2}: {msg}", 'green'))
+        else:
+            print(f"Shift {shift:2}: {msg}")
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -73,6 +67,6 @@ if __name__ == "__main__":
 
     pcap_file = sys.argv[1]
     message = extract_message_from_icmp(pcap_file)
-    print(f"\nMensaje original: {message}")
-    print("\nTodos los mensajes posibles:")
+    print(f"\nOriginal Message: {message}")
+    print("\nAll possible messages:")
     print_possible_messages(message)
