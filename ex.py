@@ -25,12 +25,13 @@ def extract_message_from_icmp(pcap_file):
                 ascii_data = raw_data.decode('ascii', errors='ignore')
                 messages.append(ascii_data)
 
-    return ''.join(messages)
+    return ' '.join(messages)
 
 # Función para determinar si una cadena es texto claro
 def is_plaintext(message):
     alpha_count = sum(1 for c in message if c.isalpha())
-    return alpha_count / len(message) > 0.7  # Umbral del 70% de letras alfabéticas
+    relevant_count = sum(1 for c in message if c.isalpha() or c.isspace() or c in '.,;:!?')
+    return alpha_count / relevant_count > 0.7  # Umbral del 70% de letras alfabéticas
 
 # Función para imprimir todas las combinaciones posibles y resaltar las legibles
 def print_possible_messages(message):
