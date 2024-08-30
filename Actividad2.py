@@ -26,7 +26,7 @@ def send_icmp_message(target_ip, message):
 
 if __name__ == "__main__":
     # Solicitar la IP de destino y el mensaje al usuario
-    target_ip = input("Ingresa la IP de destino: ")
+    target_ip = "192.168.1.1"
     message = input("Ingresa el mensaje a enviar: ")
 
     send_icmp_message(target_ip, message)
