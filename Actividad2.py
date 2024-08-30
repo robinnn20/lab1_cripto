@@ -13,7 +13,7 @@ def send_icmp_message(target_ip, message):
         send(packet, verbose=0) 
         # Incrementar el número de secuencia para el próximo paquete
         seq_number += 1
-        packet_id +=1
+        packet_id += 1
         # Esperar un breve período para evitar generar demasiado tráfico
         time.sleep(0.1)
     
